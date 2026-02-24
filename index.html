@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>口算练习</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: linear-gradient(160deg, #e8f4f8 0%, #f0e6fa 100%);
+      min-height: 100vh;
+      padding: 16px;
+      font-size: 18px;
+    }
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* 首页：题型选择 */
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .header h1 { font-size: 1.6rem; color: #333; margin: 0 0 8px 0; }
+    .header .stars { font-size: 1.4rem; color: #f5a623; letter-spacing: 4px; }
+    .header .stats { font-size: 0.9rem; color: #666; margin-top: 4px; }
+
+    .type-list { list-style: none; padding: 0; margin: 0; }
+    .type-list li { margin-bottom: 12px; }
+    .type-btn {
+      display: block;
+      width: 100%;
+      padding: 18px 20px;
+      font-size: 1.15rem;
+      border: none;
+      border-radius: 14px;
+      background: #fff;
+      color: #333;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .type-btn:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .type-btn.add { border-left: 4px solid #4caf50; }
+    .type-btn.mul { border-left: 4px solid #2196f3; }
+
+    .nav-row { display: flex; gap: 12px; margin-top: 20px; }
+    .nav-row button {
+      flex: 1;
+      padding: 14px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      cursor: pointer;
+    }
+    .nav-row .sticker-lib { background: #fff3e0; color: #e65100; }
+
+    /* 做题页 */
+    .quiz-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .quiz-header .back-btn {
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      border: none;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      cursor: pointer;
+    }
+    .wrong-count { font-size: 1rem; color: #d32f2f; }
+    .wrong-count.limit { font-weight: bold; }
+
+    .question-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 20px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+    .question-box .expr {
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: #333;
+      letter-spacing: 2px;
+    }
+    .answer-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+    .answer-row input {
+      flex: 1;
+      min-width: 120px;
+      padding: 16px 20px;
+      font-size: 1.5rem;
+      border: 2px solid #ddd;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .answer-row input:focus {
+      outline: none;
+      border-color: #2196f3;
+    }
+    .submit-btn {
+      padding: 16px 28px;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 12px;
+      background: #4caf50;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .submit-btn:active { opacity: 0.9; }
+
+    .message { text-align: center; margin-top: 16px; font-size: 1.1rem; min-height: 24px; }
+    .message.correct { color: #4caf50; font-weight: bold; }
+    .message.wrong { color: #d32f2f; }
+    .message.answer { color: #1976d2; font-weight: bold; }
+
+    .next-row { margin-top: 20px; text-align: center; }
+    .next-btn {
+      padding: 14px 32px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 12px;
+      background: #2196f3;
+      color: #fff;
+      cursor: pointer;
+    }
+    .done-row { margin-top: 16px; text-align: center; }
+    .done-btn {
+      padding: 12px 24px;
+      font-size: 0.95rem;
+      border: none;
+      border-radius: 10px;
+      background: #9e9e9e;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    /* 答对弹窗：贴纸奖励 */
+    .reward-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .reward-overlay.show { display: flex; }
+    .reward-box {
+      background: #fff;
+      border-radius: 20px;
+      padding: 32px;
+      text-align: center;
+      max-width: 320px;
+    }
+    .reward-box .sticker-big { font-size: 10rem; margin: 16px 0; }
+    .reward-box .sticker-big img { width: 240px; height: 240px; object-fit: contain; }
+    .reward-box .reward-text { font-size: 1.2rem; color: #333; }
+    .reward-box .reward-close {
+      margin-top: 20px;
+      padding: 12px 28px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 10px;
+      background: #4caf50;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    /* 贴纸库 */
+    .gallery-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .gallery-header h2 { font-size: 1.3rem; margin: 0; color: #333; }
+    .gallery-back {
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      border: none;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      cursor: pointer;
+    }
+    .gallery-empty { text-align: center; color: #666; padding: 40px 20px; }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 16px;
+    }
+    .gallery-item {
+      background: #fff;
+      border-radius: 14px;
+      padding: 12px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      cursor: pointer;
+      font-size: 2.5rem;
+      transition: transform 0.1s;
+    }
+    .gallery-item img { width: 64px; height: 64px; object-fit: contain; display: block; margin: 0 auto; }
+    .gallery-item:active { transform: scale(0.95); }
+
+    /* 贴纸放大弹窗 */
+    .sticker-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 101;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .sticker-modal.show { display: flex; }
+    .sticker-modal-content {
+      background: #fff;
+      border-radius: 20px;
+      padding: 28px;
+      text-align: center;
+    }
+    .sticker-modal-content .sticker-huge { font-size: 6rem; margin: 16px 0; }
+    .sticker-modal-content .sticker-huge img { width: 160px; height: 160px; object-fit: contain; display: block; margin: 0 auto; }
+    .sticker-modal-content .save-btn {
+      margin-top: 16px;
+      padding: 12px 24px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 10px;
+      background: #2196f3;
+      color: #fff;
+      cursor: pointer;
+    }
+    .sticker-modal-content .close-btn {
+      margin-top: 8px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+      border: none;
+      border-radius: 8px;
+      background: #e0e0e0;
+      color: #333;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- 首页：题型选择 -->
+  <section id="screen-home" class="screen active">
+    <div class="header">
+      <h1>口算练习</h1>
+      <div class="stars" id="home-stars" aria-hidden="true">★★★</div>
+      <div class="stats" id="home-stats">答对 0 题</div>
+    </div>
+    <ul class="type-list">
+      <li><button class="type-btn add" data-type="add_2_2">两位数 + 两位数</button></li>
+      <li><button class="type-btn add" data-type="add_2_3">两位数 + 三位数</button></li>
+      <li><button class="type-btn add" data-type="add_3_3">三位数 + 三位数</button></li>
+      <li><button class="type-btn mul" data-type="mul_1_2">一位数 × 两位数</button></li>
+      <li><button class="type-btn mul" data-type="mul_2_2">两位数 × 两位数</button></li>
+    </ul>
+    <div class="nav-row">
+      <button type="button" class="sticker-lib" id="btn-sticker-lib">贴纸库</button>
+    </div>
+  </section>
+
+  <!-- 做题页 -->
+  <section id="screen-quiz" class="screen">
+    <div class="quiz-header">
+      <button type="button" class="back-btn" id="btn-done">不想做了</button>
+      <span class="wrong-count" id="wrong-count">错误 0 / 5</span>
+    </div>
+    <div class="question-box">
+      <div class="expr" id="question-expr">12 + 34 = ?</div>
+      <div class="answer-row">
+        <input type="number" id="answer-input" placeholder="填答案" inputmode="numeric" />
+        <button type="button" class="submit-btn" id="btn-submit">提交</button>
+      </div>
+    </div>
+    <div class="message" id="quiz-message"></div>
+    <div class="next-row" id="next-row" style="display:none;">
+      <button type="button" class="next-btn" id="btn-next">下一题</button>
+    </div>
+    <div class="done-row">
+      <button type="button" class="done-btn" id="btn-done2">不想做了</button>
+    </div>
+  </section>
+
+  <!-- 答对奖励贴纸弹窗 -->
+  <div class="reward-overlay" id="reward-overlay">
+    <div class="reward-box">
+      <div class="reward-text">答对了！获得贴纸</div>
+      <div class="sticker-big" id="reward-sticker"><!-- 贴纸图片或 emoji 占位 --></div>
+      <button type="button" class="reward-close" id="reward-close">继续做题</button>
+    </div>
+  </div>
+
+  <!-- 贴纸库 -->
+  <section id="screen-gallery" class="screen">
+    <div class="gallery-header">
+      <h2>贴纸库</h2>
+      <button type="button" class="gallery-back" id="btn-gallery-back">返回</button>
+    </div>
+    <div class="gallery-empty" id="gallery-empty">还没有贴纸，答对题目就能获得哦～</div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </section>
+
+  <!-- 贴纸放大 + 保存 -->
+  <div class="sticker-modal" id="sticker-modal">
+    <div class="sticker-modal-content">
+      <div class="sticker-huge" id="modal-sticker"><!-- 贴纸图片 --></div>
+      <button type="button" class="save-btn" id="btn-save-sticker">保存到相册</button>
+      <button type="button" class="close-btn" id="modal-close">关闭</button>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  const STORAGE_KEY = 'kousuan_data';
+  const STICKER_DIR = 'img/stickers/';
+  // 贴纸图片文件名（支持中文，如 微信图片_20260224164319_13_4.jpg），请按你 img/stickers/ 里实际文件名填写
+  const STICKER_FILES = [
+    '微信图片_20260224164319_13_4.jpg'
+    // 在此追加更多文件名，例如：'微信图片_20260224164320_14_4.jpg',
+  ];
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (_) {}
+    return { stickers: [], totalCorrect: 0 };
+  }
+  function saveData(data) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (_) {}
+  }
+
+  function randomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+  function genAdd22() {
+    const a = randomInt(10, 99), b = randomInt(10, 99);
+    return { expr: a + ' + ' + b + ' = ?', answer: a + b };
+  }
+  function genAdd23() {
+    const a = randomInt(10, 99), b = randomInt(100, 999);
+    return { expr: a + ' + ' + b + ' = ?', answer: a + b };
+  }
+  function genAdd33() {
+    const a = randomInt(100, 999), b = randomInt(100, 999);
+    return { expr: a + ' + ' + b + ' = ?', answer: a + b };
+  }
+  function genMul12() {
+    const a = randomInt(1, 9), b = randomInt(10, 99);
+    return { expr: a + ' × ' + b + ' = ?', answer: a * b };
+  }
+  function genMul22() {
+    const a = randomInt(10, 99), b = randomInt(10, 99);
+    return { expr: a + ' × ' + b + ' = ?', answer: a * b };
+  }
+  const generators = {
+    add_2_2: genAdd22,
+    add_2_3: genAdd23,
+    add_3_3: genAdd33,
+    mul_1_2: genMul12,
+    mul_2_2: genMul22
+  };
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(function (el) { el.classList.remove('active'); });
+    var el = document.getElementById(id);
+    if (el) el.classList.add('active');
+  }
+
+  var state = {
+    type: null,
+    current: null,
+    wrongCount: 0,
+    data: loadData()
+  };
+
+  function updateHomeStats() {
+    var d = state.data;
+    var stars = Math.min(5, Math.floor(d.totalCorrect / 10) + 1);
+    document.getElementById('home-stars').textContent = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+    document.getElementById('home-stats').textContent = '答对 ' + d.totalCorrect + ' 题';
+  }
+
+  function getNewQuestion() {
+    var fn = generators[state.type];
+    return fn ? fn() : genAdd22();
+  }
+
+  function giveSticker() {
+    var id = STICKER_FILES[randomInt(0, STICKER_FILES.length - 1)];
+    state.data.stickers.push(id);
+    state.data.totalCorrect += 1;
+    saveData(state.data);
+    return id;
+  }
+
+  function isImageSticker(id) {
+    return typeof id === 'string' && /\.(png|jpg|jpeg|gif|webp)$/i.test(id);
+  }
+  function stickerSrc(id) { return STICKER_DIR + encodeURIComponent(id); }
+
+  function showReward(stickerId) {
+    var el = document.getElementById('reward-sticker');
+    if (isImageSticker(stickerId)) {
+      var img = document.createElement('img');
+      img.src = stickerSrc(stickerId);
+      img.alt = '贴纸';
+      img.onerror = function () { img.style.display = 'none'; el.appendChild(document.createTextNode('🎉')); };
+      el.innerHTML = '';
+      el.appendChild(img);
+    } else {
+      el.textContent = stickerId || '🎉';
+    }
+    document.getElementById('reward-overlay').classList.add('show');
+  }
+  document.getElementById('reward-close').onclick = function () {
+    document.getElementById('reward-overlay').classList.remove('show');
+    document.getElementById('quiz-message').textContent = '';
+    document.getElementById('answer-input').value = '';
+    document.getElementById('answer-input').focus();
+    state.current = getNewQuestion();
+    state.wrongCount = 0;
+    document.getElementById('question-expr').textContent = state.current.expr;
+    document.getElementById('wrong-count').textContent = '错误 0 / 5';
+    document.getElementById('wrong-count').classList.remove('limit');
+    document.getElementById('next-row').style.display = 'none';
+  };
+
+  function startQuiz(type) {
+    state.type = type;
+    state.current = getNewQuestion();
+    state.wrongCount = 0;
+    document.getElementById('question-expr').textContent = state.current.expr;
+    document.getElementById('answer-input').value = '';
+    document.getElementById('quiz-message').textContent = '';
+    document.getElementById('wrong-count').textContent = '错误 0 / 5';
+    document.getElementById('wrong-count').classList.remove('limit');
+    document.getElementById('next-row').style.display = 'none';
+    showScreen('screen-quiz');
+    document.getElementById('answer-input').focus();
+  }
+
+  function toNextQuestion() {
+    state.current = getNewQuestion();
+    state.wrongCount = 0;
+    document.getElementById('question-expr').textContent = state.current.expr;
+    document.getElementById('answer-input').value = '';
+    document.getElementById('quiz-message').textContent = '';
+    document.getElementById('wrong-count').textContent = '错误 0 / 5';
+    document.getElementById('wrong-count').classList.remove('limit');
+    document.getElementById('next-row').style.display = 'none';
+    document.getElementById('answer-input').focus();
+  }
+
+  document.querySelectorAll('.type-btn').forEach(function (btn) {
+    btn.onclick = function () { startQuiz(btn.dataset.type); };
+  });
+  document.getElementById('btn-done').onclick = function () {
+    showScreen('screen-home');
+    updateHomeStats();
+  };
+  document.getElementById('btn-done2').onclick = function () {
+    showScreen('screen-home');
+    updateHomeStats();
+  };
+
+  document.getElementById('answer-input').onkeydown = function (e) {
+  if (e.key === 'Enter') document.getElementById('btn-submit').click();
+};
+document.getElementById('btn-submit').onclick = function () {
+    var input = document.getElementById('answer-input');
+    var msg = document.getElementById('quiz-message');
+    var num = parseInt(input.value.trim(), 10);
+    if (isNaN(num) && input.value.trim() !== '') {
+      msg.textContent = '请输入数字';
+      msg.className = 'message wrong';
+      return;
+    }
+    if (String(num) !== input.value.trim()) {
+      msg.textContent = '请输入数字';
+      msg.className = 'message wrong';
+      return;
+    }
+    if (num === state.current.answer) {
+      msg.textContent = '答对了！';
+      msg.className = 'message correct';
+      var stickerId = giveSticker();
+      showReward(stickerId);
+      updateHomeStats();
+      return;
+    }
+    state.wrongCount += 1;
+    document.getElementById('wrong-count').textContent = '错误 ' + state.wrongCount + ' / 5';
+    if (state.wrongCount >= 5) {
+      document.getElementById('wrong-count').classList.add('limit');
+      msg.textContent = '正确答案是：' + state.current.answer;
+      msg.className = 'message answer';
+      document.getElementById('next-row').style.display = 'block';
+      document.getElementById('btn-next').onclick = function () {
+        toNextQuestion();
+      };
+    } else {
+      msg.textContent = '不对哦，再试一次（' + state.wrongCount + '/5）';
+      msg.className = 'message wrong';
+    }
+  };
+
+  document.getElementById('btn-next').onclick = function () { toNextQuestion(); };
+
+  document.getElementById('btn-sticker-lib').onclick = function () {
+    var list = state.data.stickers;
+    var empty = document.getElementById('gallery-empty');
+    var grid = document.getElementById('gallery-grid');
+    grid.innerHTML = '';
+    if (list.length === 0) {
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      list.forEach(function (id) {
+        var div = document.createElement('div');
+        div.className = 'gallery-item';
+        if (isImageSticker(id)) {
+          var img = document.createElement('img');
+          img.src = stickerSrc(id);
+          img.alt = '贴纸';
+          img.onerror = function () { img.style.display = 'none'; div.appendChild(document.createTextNode('?')); };
+          div.appendChild(img);
+        } else {
+          div.textContent = id || '?';
+        }
+        div.onclick = function () {
+          var modalEl = document.getElementById('modal-sticker');
+          modalEl.innerHTML = '';
+          if (isImageSticker(id)) {
+            var mImg = document.createElement('img');
+            mImg.src = stickerSrc(id);
+            mImg.alt = '贴纸';
+            mImg.onerror = function () { mImg.style.display = 'none'; modalEl.appendChild(document.createTextNode('?')); };
+            modalEl.appendChild(mImg);
+          } else {
+            modalEl.textContent = id || '?';
+          }
+          document.getElementById('sticker-modal').classList.add('show');
+          window._modalSticker = id;
+        };
+        grid.appendChild(div);
+      });
+    }
+    showScreen('screen-gallery');
+  };
+  document.getElementById('btn-gallery-back').onclick = function () {
+    showScreen('screen-home');
+    updateHomeStats();
+  };
+
+  document.getElementById('modal-close').onclick = function () {
+    document.getElementById('sticker-modal').classList.remove('show');
+  };
+  document.getElementById('btn-save-sticker').onclick = function () {
+    var id = window._modalSticker;
+    if (!id) return;
+    if (isImageSticker(id)) {
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function () {
+        var canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 256;
+        canvas.height = img.naturalHeight || 256;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob(function (blob) {
+          if (!blob) return;
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = id.replace(/\.[^.]+$/, '') + '.png';
+          a.click();
+          URL.revokeObjectURL(url);
+        });
+      };
+      img.onerror = function () {
+        var base = window.location.href.replace(/[#?].*$/, '').replace(/\/[^/]*$/, '/');
+        img.src = base + stickerSrc(id) + '?t=' + Date.now();
+      };
+      img.src = stickerSrc(id);
+    } else {
+      var canvas = document.createElement('canvas');
+      var size = 256;
+      canvas.width = size;
+      canvas.height = size;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, size, size);
+      ctx.font = '160px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(id || '?', size / 2, size / 2);
+      canvas.toBlob(function (blob) {
+        if (!blob) return;
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = '贴纸.png';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+  };
+
+  updateHomeStats();
+})();
+  </script>
+</body>
+</html>
