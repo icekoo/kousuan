@@ -332,15 +332,16 @@
     </div>
   </div>
 
+  <!-- 贴纸列表：由 build_sticker_list.py 生成，答对题从 img/stickers 中随机选图 -->
+  <script src="stickers-list.js"></script>
   <script>
 (function () {
   const STORAGE_KEY = 'kousuan_data';
   const STICKER_DIR = 'img/stickers/';
-  // 贴纸图片文件名（支持中文，如 微信图片_20260224164319_13_4.jpg），请按你 img/stickers/ 里实际文件名填写
-  const STICKER_FILES = [
-    '微信图片_20260224164319_13_4.jpg'
-    // 在此追加更多文件名，例如：'微信图片_20260224164320_14_4.jpg',
-  ];
+  // 优先使用 stickers-list.js 的列表（与 img/stickers 实际文件一致）；若无则用下面备用
+  var STICKER_LIST = (typeof window.STICKER_FILES !== 'undefined' && window.STICKER_FILES.length > 0)
+    ? window.STICKER_FILES
+    : ['微信图片_20260224164319_13_4.jpg'];
 
   function loadData() {
     try {
@@ -412,7 +413,9 @@
   }
 
   function giveSticker() {
-    var id = STICKER_FILES[randomInt(0, STICKER_FILES.length - 1)];
+    var list = STICKER_LIST;
+    if (!list || list.length === 0) return '🎉';
+    var id = list[randomInt(0, list.length - 1)];
     state.data.stickers.push(id);
     state.data.totalCorrect += 1;
     saveData(state.data);
@@ -426,12 +429,16 @@
 
   function showReward(stickerId) {
     var el = document.getElementById('reward-sticker');
-    if (isImageSticker(stickerId)) {
+    el.innerHTML = '';
+    if (stickerId && isImageSticker(stickerId)) {
       var img = document.createElement('img');
       img.src = stickerSrc(stickerId);
       img.alt = '贴纸';
-      img.onerror = function () { img.style.display = 'none'; el.appendChild(document.createTextNode('🎉')); };
-      el.innerHTML = '';
+      img.onerror = function () {
+        img.style.display = 'none';
+        var fallback = document.createTextNode('🎉 贴纸');
+        el.appendChild(fallback);
+      };
       el.appendChild(img);
     } else {
       el.textContent = stickerId || '🎉';
